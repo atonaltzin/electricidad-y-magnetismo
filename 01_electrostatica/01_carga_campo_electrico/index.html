@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de dos campos eléctricos</title>
+<style>
+:root{
+  --bg:#02050a;
+  --panel:rgba(8,16,28,.88);
+  --text:#f7fbff;
+  --muted:#9fb2c8;
+  --red:#ff4055;
+  --blue:#36a9ff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; overflow:hidden; min-height:100vh;
+  background:radial-gradient(circle at 50% 50%,#0b1830 0%,#050b14 35%,#02050a 75%,#000 100%);
+  color:var(--text); font-family:Segoe UI,Arial,sans-serif;
+}
+canvas{position:fixed; inset:0; width:100%; height:100%; touch-action:none}
+.panel{
+  position:fixed; z-index:5; top:18px; left:18px;
+  width:350px; max-height:calc(100vh - 36px); overflow:auto;
+  padding:18px; border-radius:20px;
+  background:var(--panel); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(12px); box-shadow:0 18px 50px #0008;
+}
+h1{font-size:25px; margin:0 0 6px}
+.sub{font-size:13px; color:var(--muted); line-height:1.45; margin:0 0 14px}
+.key{
+  margin:0 0 14px; padding:10px 12px; border-radius:13px;
+  background:rgba(255,255,255,.06); font-size:13px; line-height:1.4
+}
+.key strong{display:block;color:#fff}
+.card{
+  padding:13px; margin:10px 0; border-radius:15px;
+  background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.08)
+}
+.card h2{font-size:15px; margin:0 0 10px}
+.row{display:flex; gap:8px}
+button{
+  flex:1; border:0; border-radius:10px; padding:10px;
+  color:white; font-weight:700; cursor:pointer; background:#26364c;
+  transition:.18s ease
+}
+button:hover{transform:translateY(-1px)}
+button.active.pos{background:#d9253e}
+button.active.neg{background:#1678d4}
+label{display:block; font-size:12px; color:#cbd8e8; margin:11px 0 4px}
+input[type=range]{width:100%}
+.read{font-size:12px; color:#b8c8db; display:flex; justify-content:space-between}
+.legend{font-size:12px; line-height:1.45; color:#c8d5e5}
+.badge{
+  display:inline-block; padding:5px 9px; border-radius:99px;
+  background:#ffffff12; margin:3px
+}
+.reset{
+  width:100%; background:#ffffff12; border:1px solid #ffffff18;
+  margin-top:8px
+}
+.toggle-field{
+  width:100%;
+  margin-top:10px;
+  background:linear-gradient(135deg,#0f385f,#145b92);
+  border:1px solid rgba(95,190,255,.28);
+}
+.toggle-field.on{
+  background:linear-gradient(135deg,#126caa,#1594d8);
+  box-shadow:0 0 18px rgba(54,169,255,.22);
+}
+.info{
+  position:fixed; z-index:4; left:50%; bottom:20px; transform:translateX(-50%);
+  background:#07111ddd; border:1px solid #ffffff18; border-radius:16px;
+  padding:11px 17px; text-align:center; max-width:720px;
+  font-size:14px; box-shadow:0 10px 35px #0008
+}
+.interaction{font-size:18px; font-weight:800; margin-bottom:2px}
+@media(max-width:760px){
+  .panel{width:calc(100vw - 24px);left:12px;top:12px;max-height:45vh}
+  .info{bottom:10px;width:94%;font-size:12px}
+}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<aside class="panel">
+  <h1>Dos campos eléctricos</h1>
+  <p class="sub">Configura dos cargas y observa cómo cambia el campo eléctrico cuando modificas su signo, magnitud y distancia.</p>
+
+  <div class="key">
+    <strong>Idea clave</strong>
+    La carga produce el campo.<br>
+    El campo puede ejercer fuerza sobre otra carga.
+  </div>
+
+  <div class="card">
+    <h2>Carga 1</h2>
+    <div class="row">
+      <button id="q1p" class="pos active">+ Positiva</button>
+      <button id="q1n" class="neg">− Negativa</button>
+    </div>
+    <label>Magnitud</label>
+    <input id="q1m" type="range" min="1" max="8" step="1" value="4">
+    <div class="read"><span>menor</span><b id="q1v">4 μC</b><span>mayor</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Carga 2</h2>
+    <div class="row">
+      <button id="q2p" class="pos">+ Positiva</button>
+      <button id="q2n" class="neg active">− Negativa</button>
+    </div>
+    <label>Magnitud</label>
+    <input id="q2m" type="range" min="1" max="8" step="1" value="4">
+    <div class="read"><span>menor</span><b id="q2v">4 μC</b><span>mayor</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Distancia</h2>
+    <label>Separar / acercar las cargas</label>
+    <input id="dist" type="range" min="170" max="650" step="5" value="390">
+    <div class="read"><span>cerca</span><b id="dv">390 px</b><span>lejos</span></div>
+  </div>
+
+  <div class="legend">
+    <span class="badge">Tamaño = magnitud</span>
+    <span class="badge">Brillo = influencia</span>
+    <span class="badge">Puedes arrastrarlas</span>
+  </div>
+
+  <button class="toggle-field" id="toggleField">Mostrar líneas de campo</button>
+  <button class="reset" id="reset">Restablecer simulación</button>
+</aside>
+
+<div class="info">
+  <div class="interaction" id="interaction">Cargas opuestas: atracción</div>
+  <div id="explain">Las líneas salen de la carga positiva y entran en la negativa.</div>
+</div>
+
+<script>
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+let W, H, DPR = Math.min(devicePixelRatio || 1, 2), drag = null;
+let showField = false;
+
+const q = [
+  {sign:1, mag:4, x:0, y:0},
+  {sign:-1, mag:4, x:0, y:0}
+];
+
+const els = {
+  q1p:document.getElementById('q1p'), q1n:document.getElementById('q1n'),
+  q2p:document.getElementById('q2p'), q2n:document.getElementById('q2n'),
+  q1m:document.getElementById('q1m'), q2m:document.getElementById('q2m'),
+  q1v:document.getElementById('q1v'), q2v:document.getElementById('q2v'),
+  dist:document.getElementById('dist'), dv:document.getElementById('dv'),
+  reset:document.getElementById('reset'),
+  toggleField:document.getElementById('toggleField'),
+  interaction:document.getElementById('interaction'),
+  explain:document.getElementById('explain')
+};
+
+function resize(){
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  resetPositions(false);
+}
+addEventListener('resize', resize);
+
+function radius(a){ return 29 + a.mag * 5.2; }
+
+function resetPositions(updateLabel=true){
+  const maxSep = Math.max(180, Math.min(+els.dist.value, W * .48));
+  const cx = W < 760 ? W * .5 : W * .64;
+  const cy = H * .56;
+  q[0].x = cx - maxSep/2; q[1].x = cx + maxSep/2;
+  q[0].y = q[1].y = cy;
+  if(updateLabel){
+    els.dist.value = Math.round(maxSep);
+    els.dv.textContent = Math.round(maxSep)+' px';
+  }
+}
+
+function rgba(a,alpha){
+  return a.sign>0 ? `rgba(255,55,75,${alpha})` : `rgba(40,145,255,${alpha})`;
+}
+
+function fieldAt(px,py){
+  let ex=0, ey=0;
+  for(const a of q){
+    const dx=px-a.x, dy=py-a.y;
+    const r2=dx*dx+dy*dy+900;
+    const r=Math.sqrt(r2);
+    const s=a.sign*a.mag/r2;
+    ex += s*dx/r;
+    ey += s*dy/r;
+  }
+  return {x:ex,y:ey,m:Math.hypot(ex,ey)};
+}
+
+function drawBackground(){
+  const g=ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#010308'); g.addColorStop(.55,'#06101c'); g.addColorStop(1,'#010205');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<100;i++){
+    const px=(i*193)%W, py=(i*317)%H;
+    ctx.fillStyle='rgba(130,190,255,.15)';
+    ctx.beginPath(); ctx.arc(px,py,(i%3)*.35+.35,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function drawVectorField(){
+  const gap = W < 760 ? 50 : 42;
+  const startX = W < 760 ? 20 : 385;
+  for(let py=70; py<H-55; py+=gap){
+    for(let px=startX; px<W-20; px+=gap){
+      if(q.some(a=>Math.hypot(px-a.x,py-a.y)<radius(a)+22)) continue;
+      const f=fieldAt(px,py);
+      if(f.m<1e-9) continue;
+      const ang=Math.atan2(f.y,f.x);
+      const len=8+Math.min(15,f.m*190000);
+      const alpha=.12+Math.min(.55,f.m*110000);
+
+      ctx.strokeStyle=`rgba(115,195,255,${alpha})`;
+      ctx.fillStyle=`rgba(170,225,255,${Math.min(.9,alpha+.18)})`;
+      ctx.lineWidth=1;
+
+      ctx.beginPath();
+      ctx.moveTo(px-Math.cos(ang)*len/2,py-Math.sin(ang)*len/2);
+      ctx.lineTo(px+Math.cos(ang)*len/2,py+Math.sin(ang)*len/2);
+      ctx.stroke();
+
+      const tx=px+Math.cos(ang)*len/2, ty=py+Math.sin(ang)*len/2;
+      ctx.save(); ctx.translate(tx,ty); ctx.rotate(ang);
+      ctx.beginPath(); ctx.moveTo(4,0); ctx.lineTo(-3,-2.5); ctx.lineTo(-3,2.5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+function traceLine(seedX,seedY,dir,stroke){
+  let px=seedX, py=seedY;
+  ctx.strokeStyle=stroke; ctx.lineWidth=1.25;
+  ctx.beginPath(); ctx.moveTo(px,py);
+
+  for(let n=0;n<520;n++){
+    const f=fieldAt(px,py);
+    const m=Math.hypot(f.x,f.y);
+    if(m<1e-10) break;
+    const step=4;
+    px += dir*f.x/m*step;
+    py += dir*f.y/m*step;
+    ctx.lineTo(px,py);
+
+    if(px<0||px>W||py<0||py>H) break;
+    let hit=false;
+    for(const a of q){
+      if(Math.hypot(px-a.x,py-a.y)<radius(a)*.82 && n>8){ hit=true; break; }
+    }
+    if(hit) break;
+  }
+  ctx.stroke();
+}
+
+function drawFieldLines(){
+  for(let qi=0;qi<2;qi++){
+    const a=q[qi], R=radius(a)+5, count=10+a.mag*2;
+    const stroke=a.sign>0?'rgba(255,95,105,.48)':'rgba(70,165,255,.48)';
+    for(let i=0;i<count;i++){
+      const ang=i/count*Math.PI*2;
+      traceLine(a.x+Math.cos(ang)*R,a.y+Math.sin(ang)*R,a.sign>0?1:-1,stroke);
+    }
+  }
+}
+
+function drawSphere(a){
+  const R=radius(a), influence=R*(4.1+a.mag*.16);
+  const halo=ctx.createRadialGradient(a.x,a.y,R*.35,a.x,a.y,influence);
+  halo.addColorStop(0,rgba(a,.50));
+  halo.addColorStop(.20,rgba(a,.34));
+  halo.addColorStop(.48,rgba(a,.17));
+  halo.addColorStop(.72,rgba(a,.075));
+  halo.addColorStop(1,rgba(a,0));
+  ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(a.x,a.y,influence,0,Math.PI*2); ctx.fill();
+
+  const g=ctx.createRadialGradient(a.x-R*.35,a.y-R*.38,4,a.x,a.y,R);
+  g.addColorStop(0,'white');
+  g.addColorStop(.16,a.sign>0?'#ff9aa5':'#9bddff');
+  g.addColorStop(.48,a.sign>0?'#ff334c':'#268eff');
+  g.addColorStop(1,'#07101d');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(a.x,a.y,R,0,Math.PI*2); ctx.fill();
+
+  ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='white';
+  ctx.font=`bold ${R*.92}px Segoe UI`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(a.sign>0?'+':'−',a.x,a.y-R*.04);
+}
+
+function drawForceArrows(){
+  const same=q[0].sign===q[1].sign;
+  const d=Math.max(1,Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y));
+  const strength=Math.min(1.5,(q[0].mag*q[1].mag)/(d*d)*9000);
+  const L=28+strength*36;
+
+  for(let i=0;i<2;i++){
+    const a=q[i], b=q[1-i];
+    let vx=b.x-a.x, vy=b.y-a.y, vm=Math.hypot(vx,vy);
+    vx/=vm; vy/=vm;
+    if(same){vx=-vx;vy=-vy}
+
+    const R=radius(a);
+    const sx=a.x+vx*(R+12), sy=a.y+vy*(R+12);
+    const ex=sx+vx*L, ey=sy+vy*L;
+
+    ctx.strokeStyle='rgba(255,255,255,.86)';
+    ctx.fillStyle='white'; ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+
+    const ang=Math.atan2(vy,vx);
+    ctx.save();ctx.translate(ex,ey);ctx.rotate(ang);
+    ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-7,-5);ctx.lineTo(-7,5);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+}
+
+function syncUI(){
+  els.q1v.textContent=q[0].mag+' μC';
+  els.q2v.textContent=q[1].mag+' μC';
+
+  els.q1p.classList.toggle('active',q[0].sign>0);
+  els.q1n.classList.toggle('active',q[0].sign<0);
+  els.q2p.classList.toggle('active',q[1].sign>0);
+  els.q2n.classList.toggle('active',q[1].sign<0);
+
+  const same=q[0].sign===q[1].sign;
+  els.interaction.textContent=same?'Cargas del mismo signo: repulsión':'Cargas opuestas: atracción';
+  els.explain.textContent=same
+    ? 'Los campos se superponen. Cada carga experimenta una fuerza alejándose de la otra.'
+    : 'Los campos se superponen. Las líneas salen de la carga positiva y entran en la negativa.';
+}
+
+function draw(){
+  drawBackground();
+  if(showField){
+    drawVectorField();
+    drawFieldLines();
+  }
+  drawForceArrows();
+  drawSphere(q[0]); drawSphere(q[1]);
+  requestAnimationFrame(draw);
+}
+
+els.q1p.onclick=()=>{q[0].sign=1;syncUI()};
+els.q1n.onclick=()=>{q[0].sign=-1;syncUI()};
+els.q2p.onclick=()=>{q[1].sign=1;syncUI()};
+els.q2n.onclick=()=>{q[1].sign=-1;syncUI()};
+
+els.q1m.oninput=e=>{q[0].mag=+e.target.value;syncUI()};
+els.q2m.oninput=e=>{q[1].mag=+e.target.value;syncUI()};
+els.dist.oninput=e=>{els.dv.textContent=e.target.value+' px';resetPositions(false)};
+
+els.toggleField.onclick=()=>{
+  showField=!showField;
+  els.toggleField.classList.toggle('on',showField);
+  els.toggleField.textContent=showField ? 'Ocultar líneas de campo' : 'Mostrar líneas de campo';
+};
+
+els.reset.onclick=()=>{
+  q[0].sign=1; q[1].sign=-1; q[0].mag=q[1].mag=4;
+  els.q1m.value=els.q2m.value=4; els.dist.value=390;
+  showField=false;
+  els.toggleField.classList.remove('on');
+  els.toggleField.textContent='Mostrar líneas de campo';
+  resetPositions(); syncUI();
+};
+
+canvas.addEventListener('pointerdown',e=>{
+  for(let i=0;i<2;i++){
+    if(Math.hypot(e.clientX-q[i].x,e.clientY-q[i].y)<radius(q[i])+16){
+      drag=i; canvas.setPointerCapture(e.pointerId); break;
+    }
+  }
+});
+canvas.addEventListener('pointermove',e=>{
+  if(drag!==null){
+    q[drag].x=Math.max(20,Math.min(W-20,e.clientX));
+    q[drag].y=Math.max(20,Math.min(H-20,e.clientY));
+    const d=Math.round(Math.hypot(q[1].x-q[0].x,q[1].y-q[0].y));
+    els.dv.textContent=d+' px';
+  }
+});
+canvas.addEventListener('pointerup',()=>drag=null);
+canvas.addEventListener('pointercancel',()=>drag=null);
+
+resize(); syncUI(); draw();
+</script>
+</body>
+</html>

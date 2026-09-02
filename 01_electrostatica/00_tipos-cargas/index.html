@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargas eléctricas en los cuerpos</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f7fb;
+            color: #1e293b;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            padding: 30px 20px;
+        }
+
+        h1 {
+            color: #17365d;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .introduccion {
+            max-width: 850px;
+            text-align: center;
+            line-height: 1.6;
+            color: #475569;
+            margin-bottom: 30px;
+        }
+
+        .contenedor {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 50px;
+            flex-wrap: wrap;
+        }
+
+        /* =========================
+           ÁTOMO / CUERPO
+        ========================== */
+
+        .atomo {
+            width: 430px;
+            height: 430px;
+
+            position: relative;
+
+            border: 5px solid #334155;
+            border-radius: 50%;
+
+            background:
+                radial-gradient(
+                    circle,
+                    #ffffff 0%,
+                    #f8fafc 75%,
+                    #e2e8f0 100%
+                );
+
+            box-shadow:
+                0 15px 35px rgba(0,0,0,0.14),
+                inset 0 0 30px rgba(0,0,0,0.05);
+
+            overflow: hidden;
+        }
+
+        /* =========================
+           NÚCLEO
+        ========================== */
+
+        .nucleo {
+            width: 150px;
+            height: 150px;
+
+            position: absolute;
+
+            left: 50%;
+            top: 50%;
+
+            transform: translate(-50%, -50%);
+
+            border-radius: 50%;
+
+            background:
+                radial-gradient(
+                    circle at 35% 30%,
+                    rgba(255,255,255,0.95),
+                    rgba(255,224,130,0.55),
+                    rgba(251,191,36,0.28)
+                );
+
+            border: 3px dashed #d97706;
+
+            z-index: 1;
+
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+
+            padding-bottom: 8px;
+
+            color: #92400e;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* =========================
+           PARTÍCULAS
+        ========================== */
+
+        .particula {
+            width: 52px;
+            height: 52px;
+
+            position: absolute;
+
+            border-radius: 50%;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 29px;
+            font-weight: bold;
+
+            user-select: none;
+
+            transition:
+                left 0.5s ease,
+                top 0.5s ease,
+                transform 0.25s ease;
+
+            z-index: 3;
+        }
+
+        .particula:hover {
+            transform:
+                translate(-50%, -50%)
+                scale(1.15);
+        }
+
+        /* PROTONES */
+
+        .proton {
+            background:
+                radial-gradient(
+                    circle at 30% 25%,
+                    #fff9c4,
+                    #facc15 50%,
+                    #ca8a04 100%
+                );
+
+            border: 3px solid #a16207;
+
+            color: #422006;
+
+            box-shadow:
+                0 5px 10px rgba(0,0,0,0.25);
+        }
+
+        /* ELECTRONES */
+
+        .electron {
+            background:
+                radial-gradient(
+                    circle at 30% 25%,
+                    #bfdbfe,
+                    #3b82f6 48%,
+                    #1e3a8a 100%
+                );
+
+            border: 3px solid #1e40af;
+
+            color: white;
+
+            box-shadow:
+                0 5px 10px rgba(0,0,0,0.25);
+        }
+
+        /* =========================
+           PANEL
+        ========================== */
+
+        .panel {
+            width: 360px;
+
+            background: white;
+
+            padding: 28px;
+
+            border-radius: 18px;
+
+            box-shadow:
+                0 12px 30px rgba(0,0,0,0.10);
+        }
+
+        .panel h2 {
+            color: #17365d;
+            margin-bottom: 20px;
+        }
+
+        .dato {
+            display: flex;
+            justify-content: space-between;
+
+            padding: 12px 0;
+
+            border-bottom: 1px solid #e2e8f0;
+
+            font-size: 18px;
+        }
+
+        .numero {
+            font-weight: bold;
+        }
+
+        /* =========================
+           ESTADO
+        ========================== */
+
+        .estado {
+            margin-top: 22px;
+
+            padding: 16px;
+
+            border-radius: 12px;
+
+            text-align: center;
+
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .neutra {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .negativa {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .positiva {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .explicacion {
+            margin-top: 16px;
+
+            line-height: 1.55;
+
+            color: #475569;
+
+            min-height: 95px;
+        }
+
+        /* =========================
+           BOTONES
+        ========================== */
+
+        .botones {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+
+            margin-top: 22px;
+        }
+
+        button {
+            flex: 1;
+
+            padding: 12px 10px;
+
+            border: none;
+            border-radius: 10px;
+
+            cursor: pointer;
+
+            font-size: 14px;
+            font-weight: bold;
+
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+
+            box-shadow:
+                0 5px 12px rgba(0,0,0,0.15);
+        }
+
+        .agregar {
+            background: #2563eb;
+            color: white;
+        }
+
+        .quitar {
+            background: #dc2626;
+            color: white;
+        }
+
+        .reiniciar {
+            background: #475569;
+            color: white;
+        }
+
+        /* =========================
+           LEYENDA
+        ========================== */
+
+        .leyenda {
+            margin-top: 30px;
+
+            display: flex;
+            gap: 30px;
+
+            justify-content: center;
+
+            flex-wrap: wrap;
+        }
+
+        .leyenda-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+
+            font-weight: bold;
+        }
+
+        .mini {
+            width: 34px;
+            height: 34px;
+
+            border-radius: 50%;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .mini.proton {
+            color: #422006;
+        }
+
+        .mini.electron {
+            color: white;
+        }
+
+        @media (max-width: 850px) {
+
+            .atomo {
+                width: 350px;
+                height: 350px;
+            }
+
+            .nucleo {
+                width: 130px;
+                height: 130px;
+            }
+
+            .particula {
+                width: 45px;
+                height: 45px;
+
+                font-size: 25px;
+            }
+
+            .panel {
+                width: 100%;
+                max-width: 430px;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Tipos de cargas en los cuerpos</h1>
+
+    <p class="introduccion">
+        Existen dos tipos de carga: positiva y negativa.
+        Los protones se encuentran concentrados en el núcleo,
+        mientras que los electrones se encuentran alrededor.
+        Modifica la cantidad de electrones y observa cómo cambia
+        la carga neta del cuerpo.
+    </p>
+
+    <div class="contenedor">
+
+        <!-- ÁTOMO -->
+
+        <div class="atomo" id="atomo">
+
+            <div class="nucleo">
+                Núcleo
+            </div>
+
+        </div>
+
+
+        <!-- PANEL -->
+
+        <div class="panel">
+
+            <h2>Estado del cuerpo</h2>
+
+            <div class="dato">
+                <span>Protones (+)</span>
+
+                <span
+                    class="numero"
+                    id="numProtones"
+                >
+                    5
+                </span>
+            </div>
+
+            <div class="dato">
+                <span>Electrones (−)</span>
+
+                <span
+                    class="numero"
+                    id="numElectrones"
+                >
+                    5
+                </span>
+            </div>
+
+            <div class="dato">
+                <span>Carga neta</span>
+
+                <span
+                    class="numero"
+                    id="cargaNeta"
+                >
+                    0
+                </span>
+            </div>
+
+
+            <div
+                id="estado"
+                class="estado neutra"
+            >
+                CARGA NEUTRA
+            </div>
+
+
+            <p
+                id="explicacion"
+                class="explicacion"
+            >
+                Existe la misma cantidad de protones
+                y electrones. Las cargas positivas y
+                negativas se encuentran equilibradas.
+            </p>
+
+
+            <div class="botones">
+
+                <button
+                    class="agregar"
+                    onclick="agregarElectron()"
+                >
+                    + Agregar electrón
+                </button>
+
+                <button
+                    class="quitar"
+                    onclick="quitarElectron()"
+                >
+                    − Quitar electrón
+                </button>
+
+                <button
+                    class="reiniciar"
+                    onclick="reiniciar()"
+                >
+                    Reiniciar
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- LEYENDA -->
+
+    <div class="leyenda">
+
+        <div class="leyenda-item">
+
+            <div class="mini proton">
+                +
+            </div>
+
+            Protón
+        </div>
+
+
+        <div class="leyenda-item">
+
+            <div class="mini electron">
+                −
+            </div>
+
+            Electrón
+        </div>
+
+    </div>
+
+
+<script>
+
+    /* ================================
+       ELEMENTOS HTML
+    ================================ */
+
+    const atomo =
+        document.getElementById("atomo");
+
+    const numProtones =
+        document.getElementById("numProtones");
+
+    const numElectrones =
+        document.getElementById("numElectrones");
+
+    const cargaNeta =
+        document.getElementById("cargaNeta");
+
+    const estado =
+        document.getElementById("estado");
+
+    const explicacion =
+        document.getElementById("explicacion");
+
+
+    /* ================================
+       CANTIDADES
+    ================================ */
+
+    let protones = 5;
+
+    let electrones = 5;
+
+
+    /* ================================
+       DISTANCIA ENTRE DOS PUNTOS
+    ================================ */
+
+    function distancia(x1, y1, x2, y2) {
+
+        return Math.sqrt(
+
+            Math.pow(x2 - x1, 2) +
+
+            Math.pow(y2 - y1, 2)
+
+        );
+
+    }
+
+
+    /* ================================
+       GUARDAMOS POSICIONES
+       PARA EVITAR QUE SE ENCIMEN
+    ================================ */
+
+    let posicionesOcupadas = [];
+
+
+    /* ================================
+       POSICIÓN DE LOS PROTONES
+       CERCA DEL CENTRO
+    ================================ */
+
+    function generarPosicionProton() {
+
+        let posicionValida = false;
+
+        let x;
+        let y;
+
+        let intentos = 0;
+
+
+        while (
+            !posicionValida &&
+            intentos < 100
+        ) {
+
+            /*
+                Núcleo pequeño:
+                radio entre 0 y 12
+            */
+
+            const radio =
+                Math.random() * 12;
+
+            const angulo =
+                Math.random() *
+                Math.PI *
+                2;
+
+
+            x =
+                50 +
+                Math.cos(angulo) *
+                radio;
+
+            y =
+                50 +
+                Math.sin(angulo) *
+                radio;
+
+
+            posicionValida = true;
+
+
+            for (
+                const posicion
+                of posicionesOcupadas
+            ) {
+
+                if (
+
+                    distancia(
+                        x,
+                        y,
+                        posicion.x,
+                        posicion.y
+                    ) < 10
+
+                ) {
+
+                    posicionValida = false;
+
+                    break;
+
+                }
+
+            }
+
+
+            intentos++;
+
+        }
+
+
+        posicionesOcupadas.push({
+            x,
+            y
+        });
+
+
+        return {
+            x,
+            y
+        };
+
+    }
+
+
+    /* ================================
+       POSICIÓN DE LOS ELECTRONES
+
+       SE GENERAN FUERA DEL NÚCLEO
+    ================================ */
+
+    function generarPosicionElectron() {
+
+        let posicionValida = false;
+
+        let x;
+        let y;
+
+        let intentos = 0;
+
+
+        while (
+            !posicionValida &&
+            intentos < 200
+        ) {
+
+            /*
+                Los electrones aparecen
+                entre el 27% y 42%
+                del radio del círculo.
+            */
+
+            const radio =
+                27 +
+                Math.random() *
+                15;
+
+
+            const angulo =
+                Math.random() *
+                Math.PI *
+                2;
+
+
+            x =
+                50 +
+                Math.cos(angulo) *
+                radio;
+
+            y =
+                50 +
+                Math.sin(angulo) *
+                radio;
+
+
+            posicionValida = true;
+
+
+            for (
+                const posicion
+                of posicionesOcupadas
+            ) {
+
+                if (
+
+                    distancia(
+                        x,
+                        y,
+                        posicion.x,
+                        posicion.y
+                    ) < 12
+
+                ) {
+
+                    posicionValida =
+                        false;
+
+                    break;
+
+                }
+
+            }
+
+
+            intentos++;
+
+        }
+
+
+        posicionesOcupadas.push({
+            x,
+            y
+        });
+
+
+        return {
+            x,
+            y
+        };
+
+    }
+
+
+    /* ================================
+       CREAR UNA PARTÍCULA
+    ================================ */
+
+    function crearParticula(tipo) {
+
+        const particula =
+            document.createElement(
+                "div"
+            );
+
+
+        particula.classList.add(
+            "particula",
+            tipo
+        );
+
+
+        let posicion;
+
+
+        /* PROTÓN */
+
+        if (tipo === "proton") {
+
+            particula.textContent =
+                "+";
+
+            posicion =
+                generarPosicionProton();
+
+        }
+
+
+        /* ELECTRÓN */
+
+        else {
+
+            particula.textContent =
+                "−";
+
+            posicion =
+                generarPosicionElectron();
+
+        }
+
+
+        particula.style.left =
+            posicion.x + "%";
+
+
+        particula.style.top =
+            posicion.y + "%";
+
+
+        particula.style.transform =
+            "translate(-50%, -50%)";
+
+
+        atomo.appendChild(
+            particula
+        );
+
+    }
+
+
+    /* ================================
+       DIBUJAR ÁTOMO
+    ================================ */
+
+    function dibujarAtomo() {
+
+        /*
+            Eliminamos únicamente
+            las partículas.
+
+            No eliminamos el núcleo.
+        */
+
+        const particulas =
+            atomo.querySelectorAll(
+                ".particula"
+            );
+
+
+        particulas.forEach(
+
+            particula =>
+                particula.remove()
+
+        );
+
+
+        /*
+            Reiniciamos las posiciones
+        */
+
+        posicionesOcupadas = [];
+
+
+        /*
+            PROTONES
+            siempre al centro
+        */
+
+        for (
+            let i = 0;
+            i < protones;
+            i++
+        ) {
+
+            crearParticula(
+                "proton"
+            );
+
+        }
+
+
+        /*
+            ELECTRONES
+            alrededor del núcleo
+        */
+
+        for (
+            let i = 0;
+            i < electrones;
+            i++
+        ) {
+
+            crearParticula(
+                "electron"
+            );
+
+        }
+
+
+        actualizarInformacion();
+
+    }
+
+
+    /* ================================
+       ACTUALIZAR PANEL
+    ================================ */
+
+    function actualizarInformacion() {
+
+        numProtones.textContent =
+            protones;
+
+
+        numElectrones.textContent =
+            electrones;
+
+
+        /*
+            Protón = +1
+
+            Electrón = -1
+        */
+
+        const carga =
+            protones -
+            electrones;
+
+
+        /*
+            MOSTRAR SIGNO +
+            PARA VALORES POSITIVOS
+        */
+
+        if (carga > 0) {
+
+            cargaNeta.textContent =
+                "+" + carga;
+
+        }
+
+        else {
+
+            cargaNeta.textContent =
+                carga;
+
+        }
+
+
+        /* ============================
+           CARGA NEGATIVA
+        ============================ */
+
+        if (
+            electrones >
+            protones
+        ) {
+
+            estado.textContent =
+                "CARGA NEGATIVA";
+
+
+            estado.className =
+                "estado negativa";
+
+
+            explicacion.innerHTML =
+
+                "El cuerpo tiene <strong>más electrones que protones</strong>. " +
+
+                "Existe un exceso de electrones, por lo tanto presenta carga negativa.";
+
+        }
+
+
+        /* ============================
+           CARGA POSITIVA
+        ============================ */
+
+        else if (
+            electrones <
+            protones
+        ) {
+
+            estado.textContent =
+                "CARGA POSITIVA";
+
+
+            estado.className =
+                "estado positiva";
+
+
+            explicacion.innerHTML =
+
+                "El cuerpo tiene <strong>menos electrones que protones</strong>. " +
+
+                "Existe un déficit de electrones, por lo tanto presenta carga positiva.";
+
+        }
+
+
+        /* ============================
+           CARGA NEUTRA
+        ============================ */
+
+        else {
+
+            estado.textContent =
+                "CARGA NEUTRA";
+
+
+            estado.className =
+                "estado neutra";
+
+
+            explicacion.innerHTML =
+
+                "Existe la misma cantidad de protones y electrones. " +
+
+                "Las cargas positivas y negativas se encuentran equilibradas.";
+
+        }
+
+    }
+
+
+    /* ================================
+       AGREGAR ELECTRÓN
+    ================================ */
+
+    function agregarElectron() {
+
+        if (
+            electrones <
+            10
+        ) {
+
+            electrones++;
+
+            dibujarAtomo();
+
+        }
+
+    }
+
+
+    /* ================================
+       QUITAR ELECTRÓN
+    ================================ */
+
+    function quitarElectron() {
+
+        if (
+            electrones >
+            0
+        ) {
+
+            electrones--;
+
+            dibujarAtomo();
+
+        }
+
+    }
+
+
+    /* ================================
+       REINICIAR
+    ================================ */
+
+    function reiniciar() {
+
+        protones = 5;
+
+        electrones = 5;
+
+        dibujarAtomo();
+
+    }
+
+
+    /* ================================
+       INICIAR SIMULACIÓN
+    ================================ */
+
+    dibujarAtomo();
+
+</script>
+
+</body>
+</html>

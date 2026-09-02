@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador 3D de Flujo Eléctrico y Ley de Gauss</title>
+<style>
+:root{
+  --bg:#02050a;--panel:rgba(8,16,28,.92);--text:#f5f9ff;--muted:#9eb3c9;
+  --blue:#36a9ff;--green:#44e38a;--red:#ff4055;--gold:#ffc94d;--purple:#a56cff;
+  --cyan:#45e3ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  font-family:Segoe UI,Arial,sans-serif;color:var(--text);
+  background:radial-gradient(circle at 62% 48%,#0d1c36 0%,#050b14 42%,#02050a 76%,#000 100%);
+}
+canvas{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+canvas.dragging{cursor:grabbing}
+.panel{
+  position:fixed;z-index:5;top:14px;left:14px;width:385px;max-height:calc(100vh - 28px);
+  overflow:auto;padding:16px;border-radius:20px;background:var(--panel);
+  border:1px solid #ffffff20;backdrop-filter:blur(12px);box-shadow:0 18px 55px #0009;
+}
+h1{font-size:23px;margin:0 0 5px}
+.sub{font-size:12.5px;line-height:1.42;color:var(--muted);margin:0 0 12px}
+.modeTabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.modeTabs button{padding:10px 7px}
+.card{
+  background:#ffffff0b;border:1px solid #ffffff12;border-radius:15px;padding:11px;margin:8px 0
+}
+.card h2{font-size:14px;margin:0 0 8px}
+.tip{
+  border-radius:13px;padding:9px 11px;margin:8px 0;background:#ffffff0c;
+  border:1px solid #ffffff12;font-size:12px;line-height:1.42
+}
+label{display:block;font-size:12px;color:#d1dcea;margin:8px 0 4px}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.read{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+.read b{color:#eaf4ff}
+.row{display:flex;gap:7px}
+button{
+  border:0;border-radius:10px;padding:9px 9px;flex:1;cursor:pointer;
+  color:white;background:#24364c;font-weight:700;font-size:12px
+}
+button.active{background:linear-gradient(135deg,#126caa,#1594d8)}
+button.active.pos{background:#d5253e}
+button.active.neg{background:#1479d1}
+button.purple.active{background:linear-gradient(135deg,#6541b3,#8b5cf6)}
+button.gold.active{background:linear-gradient(135deg,#a06e00,#d99b0b)}
+button.green.active{background:linear-gradient(135deg,#08794a,#10a865)}
+.reset{width:100%;margin-top:7px;background:#ffffff12;border:1px solid #ffffff18}
+.formula{
+  position:fixed;right:16px;top:16px;z-index:4;padding:11px 16px;border-radius:15px;
+  background:#07111dde;border:1px solid #ffffff1d;box-shadow:0 10px 35px #0007;
+  font-family:Cambria,"Times New Roman",serif;font-size:24px
+}
+.info{
+  position:fixed;z-index:4;left:50%;bottom:14px;transform:translateX(-50%);
+  width:min(850px,calc(100vw - 40px));padding:10px 15px;border-radius:15px;
+  background:#07111de8;border:1px solid #ffffff1a;text-align:center;box-shadow:0 10px 35px #0008
+}
+.info strong{font-size:16px}.info div:last-child{font-size:12.5px;color:#c5d3e3;margin-top:3px}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.result{padding:7px;border-radius:10px;background:#ffffff09;border:1px solid #ffffff10}
+.result small{display:block;color:var(--muted);font-size:10px}.result b{font-size:13px}
+.legend{font-size:11px;color:var(--muted);line-height:1.38}
+.legend span{display:inline-block;margin:2px 3px 2px 0;padding:4px 7px;border-radius:99px;background:#ffffff0c}
+.hidden{display:none!important}
+select{
+  width:100%;padding:9px;border-radius:10px;background:#17253a;color:white;border:1px solid #ffffff18;
+}
+.status{
+  margin-top:8px;padding:9px;border-radius:11px;background:#0e2031;border:1px solid #ffffff12;
+  font-size:11.5px;line-height:1.4
+}
+.status.good{border-color:#44e38a55;background:#0b2a20}
+.status.warn{border-color:#ffc94d55;background:#2c240b}
+@media(max-width:780px){
+ .panel{left:9px;top:9px;width:calc(100vw - 18px);max-height:47vh}
+ .formula{display:none}.info{bottom:7px}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<section class="panel">
+  <h1>Flujo eléctrico · Simulador 3D</h1>
+  <p class="sub">Gira la escena arrastrando con el mouse. Cambia entre una superficie abierta para estudiar flujo y superficies cerradas para explorar la Ley de Gauss.</p>
+
+  <div class="modeTabs">
+    <button id="modeFlux" class="active">1 · Flujo en placa</button>
+    <button id="modeGauss" class="purple">2 · Ley de Gauss</button>
+  </div>
+
+  <div id="fluxControls">
+    <div class="tip">
+      θ se mide entre <b>E</b> y la <b>normal</b> de la superficie. θ=0° → flujo máximo; θ=90° → flujo cero.
+    </div>
+
+    <div class="card">
+      <h2>Placa fuente</h2>
+      <div class="row">
+        <button id="pos" class="active pos">+ Positiva</button>
+        <button id="neg" class="neg">− Negativa</button>
+      </div>
+      <label>Intensidad del campo E</label>
+      <input id="E" type="range" min="100" max="900" step="50" value="400">
+      <div class="read"><span>100</span><b id="Ev">400 N/C</b><span>900</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Superficie imaginaria abierta</h2>
+      <label>Área A</label>
+      <input id="A" type="range" min=".30" max="2" step=".05" value="1">
+      <div class="read"><span>pequeña</span><b id="Av">1.00 m²</b><span>grande</span></div>
+      <label>Ángulo θ entre E y la normal</label>
+      <input id="T" type="range" min="0" max="90" step="1" value="0">
+      <div class="read"><span>0°</span><b id="Tv">0°</b><span>90°</span></div>
+    </div>
+  </div>
+
+  <div id="gaussControls" class="hidden">
+    <div class="tip">
+      Una <b>superficie gaussiana</b> es imaginaria y cerrada. La Ley de Gauss relaciona el flujo neto con la <b>carga encerrada</b>, no con la forma de la superficie.
+    </div>
+
+    <div class="card">
+      <h2>Fuente de carga</h2>
+      <label>Tipo de fuente</label>
+      <select id="sourceType">
+        <option value="point">Carga puntual</option>
+        <option value="line">Línea de carga</option>
+        <option value="plane">Plano cargado</option>
+      </select>
+
+      <div class="row" style="margin-top:8px">
+        <button id="gPos" class="active pos">+ Positiva</button>
+        <button id="gNeg" class="neg">− Negativa</button>
+      </div>
+
+      <label>Magnitud de carga encerrable |Q|</label>
+      <input id="Q" type="range" min="0.5" max="5" step="0.5" value="2">
+      <div class="read"><span>0.5 µC</span><b id="Qv">2.0 µC</b><span>5 µC</span></div>
+
+      <label id="sourcePosLabel">Posición de la carga respecto al centro</label>
+      <input id="sourcePos" type="range" min="-2.7" max="2.7" step=".1" value="0">
+      <div class="read"><span>izquierda</span><b id="sourcePosV">0.0</b><span>derecha</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Superficie gaussiana</h2>
+      <div class="row">
+        <button id="sphereBtn" class="active green">Esférica</button>
+        <button id="cylinderBtn" class="gold">Cilíndrica</button>
+        <button id="boxBtn">Tipo caja</button>
+      </div>
+      <label>Tamaño de la superficie</label>
+      <input id="gSize" type="range" min="1.0" max="2.5" step=".1" value="1.7">
+      <div class="read"><span>pequeña</span><b id="gSizeV">1.7</b><span>grande</span></div>
+
+      <div id="symmetryStatus" class="status good">
+        <b>Simetría ideal:</b> carga puntual + superficie esférica.
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="lines" class="active">Ocultar líneas</button>
+    <button id="normal" class="active">Ocultar normal</button>
+  </div>
+
+  <button id="operation" class="purple" style="width:100%;margin-top:7px">Activar modo operación</button>
+
+  <div id="op" class="card hidden">
+    <h2>Modo operación</h2>
+    <div id="fluxOp">
+      <div style="font-family:Cambria,serif;text-align:center;font-size:21px;margin-bottom:8px">Φ<sub>E</sub> = E A cos θ</div>
+      <div class="results">
+        <div class="result"><small>Campo E</small><b id="rE">400 N/C</b></div>
+        <div class="result"><small>Área A</small><b id="rA">1.00 m²</b></div>
+        <div class="result"><small>Ángulo θ</small><b id="rT">0°</b></div>
+        <div class="result"><small>Flujo ΦE</small><b id="rP">400 N·m²/C</b></div>
+      </div>
+    </div>
+    <div id="gaussOp" class="hidden">
+      <div style="font-family:Cambria,serif;text-align:center;font-size:20px;margin-bottom:8px">∮ E · dA = Q<sub>enc</sub> / ε₀</div>
+      <div class="results">
+        <div class="result"><small>Q total</small><b id="rQ">+2.0 µC</b></div>
+        <div class="result"><small>Q encerrada</small><b id="rQenc">+2.0 µC</b></div>
+        <div class="result"><small>Flujo neto</small><b id="rFluxG">2.26×10⁵ N·m²/C</b></div>
+        <div class="result"><small>ε₀</small><b>8.85×10⁻¹²</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span>Azul: campo E</span><span>Verde: cruza superficie</span>
+    <span>Amarillo: superficie</span><span>Morado: normal</span>
+  </div>
+
+  <button id="reset" class="reset">Restablecer</button>
+</section>
+
+<div id="formula" class="formula">Φ<sub>E</sub> = E A cos θ</div>
+
+<div class="info">
+  <strong id="headline">θ = 0° · Flujo máximo</strong>
+  <div id="desc">La normal de la superficie apunta en la misma dirección que el campo eléctrico.</div>
+</div>
+
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let DPR=Math.min(devicePixelRatio||1,2),W,H;
+let mode='flux',sign=1,gSign=1,showLines=true,showNormal=true,operation=false;
+let gaussianShape='sphere';
+let camYaw=-0.35,camPitch=0.18,drag=false,lastX=0,lastY=0;
+
+const E=$('E'),A=$('A'),T=$('T'),Q=$('Q'),sourcePos=$('sourcePos'),gSize=$('gSize');
+
+function resize(){
+ W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;
+ canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+addEventListener('resize',resize);resize();
+
+canvas.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;canvas.classList.add('dragging');canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{
+ if(!drag)return; const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;
+ camYaw+=dx*.006;camPitch=Math.max(-.75,Math.min(.75,camPitch+dy*.006));
+});
+canvas.addEventListener('pointerup',()=>{drag=false;canvas.classList.remove('dragging')});
+
+function rotY(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x*c+p.z*s,y:p.y,z:-p.x*s+p.z*c}}
+function rotX(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x,y:p.y*c-p.z*s,z:p.y*s+p.z*c}}
+function cam(p){return rotX(rotY(p,camYaw),camPitch)}
+function project(p){const q=cam(p),f=Math.min(W,H)*1.15,z=q.z+7;return{x:W*.63+q.x*f/z,y:H*.52-q.y*f/z,z}}
+function add(a,b){return{x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}}
+function mul(a,k){return{x:a.x*k,y:a.y*k,z:a.z*k}}
+function line3(a,b,color,w=2,alpha=1,dash=[]){
+ const A=project(a),B=project(b);ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash);
+ ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.restore();
+}
+function arrow3(a,b,color,w=2,alpha=1){
+ line3(a,b,color,w,alpha);const A=project(a),B=project(b),ang=Math.atan2(B.y-A.y,B.x-A.x);
+ ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(B.x,B.y);
+ ctx.lineTo(B.x-9*Math.cos(ang-.45),B.y-9*Math.sin(ang-.45));
+ ctx.lineTo(B.x-9*Math.cos(ang+.45),B.y-9*Math.sin(ang+.45));ctx.closePath();ctx.fill();ctx.restore();
+}
+function poly(points,fill,stroke,w=1){
+ const ps=points.map(project);ctx.beginPath();ctx.moveTo(ps[0].x,ps[0].y);ps.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.closePath();
+ if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=w;ctx.stroke()}
+}
+function text3(text,p,color='#fff',font='14px Segoe UI'){const q=project(p);ctx.fillStyle=color;ctx.font=font;ctx.textAlign='center';ctx.fillText(text,q.x,q.y)}
+
+function drawGrid(){
+ ctx.save();ctx.globalAlpha=.13;
+ for(let z=-3;z<=3;z+=.5) line3({x:-3.6,y:-2,z},{x:3.8,y:-2,z},'#3d6f9e',1);
+ for(let x=-3.6;x<=3.8;x+=.5) line3({x,y:-2,z:-3},{x,y:-2,z:3},'#3d6f9e',1);
+ ctx.restore();
+}
+
+function drawFluxMode(){
+ const e=+E.value,a=+A.value,t=+T.value,rad=t*Math.PI/180,phi=e*a*Math.cos(rad);
+ $('Ev').textContent=e+' N/C';$('Av').textContent=a.toFixed(2)+' m²';$('Tv').textContent=t+'°';
+ $('rE').textContent=e+' N/C';$('rA').textContent=a.toFixed(2)+' m²';$('rT').textContent=t+'°';$('rP').textContent=phi.toFixed(1)+' N·m²/C';
+
+ if(t===0){$('headline').textContent='θ = 0° · Flujo máximo';$('desc').textContent='La normal es paralela a E; la superficie es perpendicular al campo.'}
+ else if(t===90){$('headline').textContent='θ = 90° · Flujo cero';$('desc').textContent='La superficie queda paralela al campo. Las líneas no la atraviesan.'}
+ else{$('headline').textContent=`θ = ${t}° · Flujo parcial`;$('desc').textContent=`La orientación conserva ${(Math.cos(rad)*100).toFixed(0)}% del flujo máximo.`}
+
+ const srcX=-2.8,center={x:.7,y:0,z:0},sourceH=3.5,sourceD=2.6;
+ poly([{x:srcX,y:-1.75,z:-1.3},{x:srcX,y:1.75,z:-1.3},{x:srcX,y:1.75,z:1.3},{x:srcX,y:-1.75,z:1.3}],
+      sign>0?'rgba(255,64,85,.35)':'rgba(54,169,255,.35)',sign>0?'#ff4055':'#36a9ff',3);
+ for(let yy=-1.35;yy<=1.35;yy+=.65)for(let zz=-.9;zz<=.9;zz+=.6)text3(sign>0?'+':'−',{x:srcX-.02,y:yy,z:zz},'#fff','bold 17px Segoe UI');
+ text3('Placa fuente Q',{x:srcX,y:2.1,z:0},'#eaf4ff','bold 15px Segoe UI');
+
+ const n={x:Math.cos(rad),y:0,z:Math.sin(rad)},u={x:-Math.sin(rad),y:0,z:Math.cos(rad)},v={x:0,y:1,z:0};
+ const side=Math.sqrt(a)*1.55,hw=side/2,hh=side/2;
+ const corners=[add(center,add(mul(u,-hw),mul(v,-hh))),add(center,add(mul(u,hw),mul(v,-hh))),add(center,add(mul(u,hw),mul(v,hh))),add(center,add(mul(u,-hw),mul(v,hh)))];
+
+ if(showLines){
+  const nLines=Math.round(7+(e-100)/800*12),ys=Array.from({length:nLines},(_,i)=>-1.5+3*i/(nLines-1)),zs=[-1,-.5,0,.5,1],dir=sign>0?1:-1;
+  function hit(y,z){
+   const d={x:dir,y:0,z:0},start={x:dir>0?srcX+.05:3.7,y,z},den=d.x*n.x;
+   if(Math.abs(den)<.0001)return false;
+   const tt=((center.x-start.x)*n.x+(center.z-start.z)*n.z)/den;if(tt<0)return false;
+   const p={x:start.x+d.x*tt,y,z},rel={x:p.x-center.x,y:p.y,z:p.z-center.z};
+   const cu=rel.x*u.x+rel.z*u.z,cv=rel.y;return Math.abs(cu)<=hw&&Math.abs(cv)<=hh;
+  }
+  ys.forEach(y=>zs.forEach(z=>{const h=hit(y,z),col=h?'#44e38a':'#36a9ff',st=dir>0?{x:srcX+.08,y,z}:{x:3.8,y,z},en=dir>0?{x:3.8,y,z}:{x:srcX-.08,y,z};arrow3(st,en,col,h?2.6:1.4,h?.92:.4)}));
+ }
+
+ poly(corners,'rgba(255,201,77,.24)','#ffc94d',3);line3(corners[0],corners[2],'rgba(255,225,145,.25)',1);line3(corners[1],corners[3],'rgba(255,225,145,.25)',1);
+ text3('Superficie A',add(center,mul(v,hh+.35)),'#ffe7a5','bold 15px Segoe UI');
+ if(showNormal){arrow3(center,add(center,mul(n,1.55)),'#a56cff',3);text3('normal n̂',add(center,mul(n,1.85)),'#d3beff','bold 14px Segoe UI')}
+ arrow3({x:-.8,y:-2.45,z:1.7},{x:.7,y:-2.45,z:1.7},'#36a9ff',3);text3('E',{x:-.05,y:-2.75,z:1.7},'#8bd1ff','bold 17px Segoe UI');
+}
+
+function drawSphere(center,r){
+ // 3 orthogonal great circles
+ for(let plane=0;plane<3;plane++){
+  let prev=null;
+  for(let i=0;i<=80;i++){
+   const a=i*Math.PI*2/80;let p;
+   if(plane===0)p={x:center.x+r*Math.cos(a),y:center.y+r*Math.sin(a),z:center.z};
+   if(plane===1)p={x:center.x+r*Math.cos(a),y:center.y,z:center.z+r*Math.sin(a)};
+   if(plane===2)p={x:center.x,y:center.y+r*Math.cos(a),z:center.z+r*Math.sin(a)};
+   if(prev)line3(prev,p,'rgba(255,201,77,.75)',2);prev=p;
+  }
+ }
+}
+function drawCylinder(center,r,h){
+ const steps=48;
+ for(const x of [center.x-h/2,center.x+h/2]){
+  let prev=null;
+  for(let i=0;i<=steps;i++){const a=i*Math.PI*2/steps,p={x,y:center.y+r*Math.cos(a),z:center.z+r*Math.sin(a)};if(prev)line3(prev,p,'rgba(255,201,77,.75)',2);prev=p}
+ }
+ for(let i=0;i<8;i++){const a=i*Math.PI*2/8;line3({x:center.x-h/2,y:center.y+r*Math.cos(a),z:center.z+r*Math.sin(a)},{x:center.x+h/2,y:center.y+r*Math.cos(a),z:center.z+r*Math.sin(a)},'rgba(255,201,77,.55)',1.5)}
+}
+function drawBox(center,s){
+ const v=[];
+ for(let dx of [-1,1])for(let dy of [-1,1])for(let dz of [-1,1])v.push({x:center.x+dx*s,y:center.y+dy*s,z:center.z+dz*s});
+ const edges=[[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]];
+ edges.forEach(e=>line3(v[e[0]],v[e[1]],'rgba(255,201,77,.78)',2));
+}
+function pointInsideGaussian(p,size){
+ if(gaussianShape==='sphere')return Math.hypot(p.x,p.y,p.z)<=size;
+ if(gaussianShape==='cylinder')return Math.abs(p.x)<=size*1.15 && Math.hypot(p.y,p.z)<=size*.78;
+ return Math.abs(p.x)<=size && Math.abs(p.y)<=size && Math.abs(p.z)<=size;
+}
+function drawPointField(source,size){
+ const dirs=[];
+ for(let iy=-2;iy<=2;iy++)for(let iz=-2;iz<=2;iz++)for(let ix=-2;ix<=2;ix++){
+  if(ix===0&&iy===0&&iz===0)continue;
+  const m=Math.hypot(ix,iy,iz);dirs.push({x:ix/m,y:iy/m,z:iz/m});
+ }
+ dirs.filter((_,i)=>i%2===0).forEach(d=>{
+  const s=gSign>0?source:add(source,mul(d,3.4));
+  const e=gSign>0?add(source,mul(d,3.4)):source;
+  arrow3(s,e,'#36a9ff',1.25,.45);
+ });
+}
+function drawLineSource(){
+ line3({x:-2.6,y:0,z:0},{x:2.6,y:0,z:0},gSign>0?'#ff4055':'#36a9ff',7,.85);
+ for(let x=-2.2;x<=2.2;x+=.55)text3(gSign>0?'+':'−',{x,y:.12,z:0},'#fff','bold 14px Segoe UI');
+ if(showLines){
+  for(let x=-2;x<=2;x+=.8)for(let a=0;a<Math.PI*2;a+=Math.PI/4){
+   const d={x:0,y:Math.cos(a),z:Math.sin(a)},s=gSign>0?{x,y:.12*d.y,z:.12*d.z}:{x,y:2.8*d.y,z:2.8*d.z},e=gSign>0?{x,y:2.8*d.y,z:2.8*d.z}:{x,y:.12*d.y,z:.12*d.z};
+   arrow3(s,e,'#36a9ff',1.15,.32);
+  }
+ }
+}
+function drawPlaneSource(){
+ const x=0;
+ poly([{x,y:-2,z:-2},{x,y:2,z:-2},{x,y:2,z:2},{x,y:-2,z:2}],gSign>0?'rgba(255,64,85,.26)':'rgba(54,169,255,.26)',gSign>0?'#ff4055':'#36a9ff',2.5);
+ for(let y=-1.5;y<=1.5;y+=.75)for(let z=-1.5;z<=1.5;z+=.75)text3(gSign>0?'+':'−',{x:.02,y,z},'#fff','bold 14px Segoe UI');
+ if(showLines){
+  for(let y=-1.5;y<=1.5;y+=.75)for(let z=-1.5;z<=1.5;z+=.75){
+   const d=gSign>0?1:-1;
+   arrow3({x:.08*d,y,z},{x:3*d,y,z},'#36a9ff',1.2,.32);
+   arrow3({x:-.08*d,y,z},{x:-3*d,y,z},'#36a9ff',1.2,.32);
+  }
+ }
+}
+
+function drawGaussMode(){
+ const sourceType=$('sourceType').value,q=+Q.value,x=+sourcePos.value,size=+gSize.value;
+ $('Qv').textContent=q.toFixed(1)+' µC';$('sourcePosV').textContent=x.toFixed(1);$('gSizeV').textContent=size.toFixed(1);
+
+ let source={x,y:0,z:0};
+ let enclosed=true;
+ if(sourceType==='point') enclosed=pointInsideGaussian(source,size);
+ // For ideal infinite line/plane visualizations the Gaussian surface intersects the distribution, so Qenc is represented by slider Q.
+ if(sourceType!=='point') enclosed=true;
+
+ const signedQ=gSign*q;
+ const qEnc=enclosed?signedQ:0;
+ const eps0=8.8541878128e-12;
+ const flux=(qEnc*1e-6)/eps0;
+ $('rQ').textContent=(signedQ>0?'+':'')+signedQ.toFixed(1)+' µC';
+ $('rQenc').textContent=(qEnc>0?'+':'')+qEnc.toFixed(1)+' µC';
+ $('rFluxG').textContent=(flux===0?'0':(flux/1e5).toFixed(2)+'×10⁵')+' N·m²/C';
+
+ let ideal=(sourceType==='point'&&gaussianShape==='sphere')||(sourceType==='line'&&gaussianShape==='cylinder');
+ // a box is deliberately shown as valid but not symmetry-matched
+ const status=$('symmetryStatus');
+ if(ideal){status.className='status good';status.innerHTML='<b>Simetría ideal:</b> esta combinación permite que Gauss simplifique mucho el cálculo de E.'}
+ else{status.className='status warn';status.innerHTML='<b>Ley de Gauss sigue siendo válida,</b> pero esta superficie no aprovecha completamente la simetría de la fuente.'}
+
+ if(sourceType==='point'){
+  text3('Carga puntual Q',add(source,{x:0,y:.45,z:0}),'#eaf4ff','bold 14px Segoe UI');
+  const p=project(source);ctx.beginPath();ctx.arc(p.x,p.y,17,0,Math.PI*2);ctx.fillStyle=gSign>0?'#ff4055':'#36a9ff';ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 20px Segoe UI';ctx.textAlign='center';ctx.fillText(gSign>0?'+':'−',p.x,p.y+7);
+  if(showLines)drawPointField(source,size);
+  $('sourcePos').disabled=false;$('sourcePosLabel').textContent='Posición de la carga respecto al centro';
+ }else if(sourceType==='line'){
+  drawLineSource();$('sourcePos').disabled=true;$('sourcePosLabel').textContent='La línea atraviesa el centro de la superficie';
+ }else{
+  drawPlaneSource();$('sourcePos').disabled=true;$('sourcePosLabel').textContent='El plano atraviesa el centro de la superficie';
+ }
+
+ if(gaussianShape==='sphere')drawSphere({x:0,y:0,z:0},size);
+ if(gaussianShape==='cylinder')drawCylinder({x:0,y:0,z:0},size*.78,size*2.3);
+ if(gaussianShape==='box')drawBox({x:0,y:0,z:0},size);
+
+ text3('Superficie gaussiana',{x:0,y:size+0.55,z:0},'#ffe7a5','bold 15px Segoe UI');
+
+ if(sourceType==='point'){
+  if(enclosed){$('headline').textContent='La carga está encerrada → existe flujo neto';$('desc').textContent='Qenc ≠ 0, por lo tanto el flujo neto a través de la superficie cerrada es Qenc/ε₀.'}
+  else{$('headline').textContent='La carga está fuera → flujo neto cero';$('desc').textContent='El campo puede atravesar partes de la superficie, pero Qenc = 0 y las contribuciones netas se cancelan.'}
+ }else{
+  $('headline').textContent='Superficie gaussiana cerrada';
+  $('desc').textContent='Gauss relaciona el flujo neto con la carga encerrada. La forma elegida determina qué tan fácil es calcular E usando simetría.';
+ }
+}
+
+function draw(){
+ ctx.clearRect(0,0,W,H);drawGrid();
+ if(mode==='flux')drawFluxMode();else drawGaussMode();
+ requestAnimationFrame(draw);
+}
+
+function setMode(m){
+ mode=m;
+ $('modeFlux').classList.toggle('active',m==='flux');
+ $('modeGauss').classList.toggle('active',m==='gauss');
+ $('fluxControls').classList.toggle('hidden',m!=='flux');
+ $('gaussControls').classList.toggle('hidden',m!=='gauss');
+ $('fluxOp').classList.toggle('hidden',m!=='flux');
+ $('gaussOp').classList.toggle('hidden',m!=='gauss');
+ $('normal').classList.toggle('hidden',m!=='flux');
+ $('formula').innerHTML=m==='flux'?'Φ<sub>E</sub> = E A cos θ':'∮ E · dA = Q<sub>enc</sub> / ε₀';
+}
+$('modeFlux').onclick=()=>setMode('flux');
+$('modeGauss').onclick=()=>setMode('gauss');
+
+$('pos').onclick=()=>{sign=1;$('pos').classList.add('active');$('neg').classList.remove('active')};
+$('neg').onclick=()=>{sign=-1;$('neg').classList.add('active');$('pos').classList.remove('active')};
+$('gPos').onclick=()=>{gSign=1;$('gPos').classList.add('active');$('gNeg').classList.remove('active')};
+$('gNeg').onclick=()=>{gSign=-1;$('gNeg').classList.add('active');$('gPos').classList.remove('active')};
+
+$('sphereBtn').onclick=()=>{gaussianShape='sphere';['sphereBtn','cylinderBtn','boxBtn'].forEach(id=>$(id).classList.remove('active'));$('sphereBtn').classList.add('active')};
+$('cylinderBtn').onclick=()=>{gaussianShape='cylinder';['sphereBtn','cylinderBtn','boxBtn'].forEach(id=>$(id).classList.remove('active'));$('cylinderBtn').classList.add('active')};
+$('boxBtn').onclick=()=>{gaussianShape='box';['sphereBtn','cylinderBtn','boxBtn'].forEach(id=>$(id).classList.remove('active'));$('boxBtn').classList.add('active')};
+
+$('lines').onclick=()=>{showLines=!showLines;$('lines').classList.toggle('active',showLines);$('lines').textContent=showLines?'Ocultar líneas':'Mostrar líneas'};
+$('normal').onclick=()=>{showNormal=!showNormal;$('normal').classList.toggle('active',showNormal);$('normal').textContent=showNormal?'Ocultar normal':'Mostrar normal'};
+$('operation').onclick=()=>{operation=!operation;$('op').classList.toggle('hidden',!operation);$('operation').classList.toggle('active',operation);$('operation').textContent=operation?'Ocultar modo operación':'Activar modo operación'};
+
+$('reset').onclick=()=>{
+ mode='flux';sign=1;gSign=1;showLines=true;showNormal=true;operation=false;gaussianShape='sphere';
+ E.value=400;A.value=1;T.value=0;Q.value=2;sourcePos.value=0;gSize.value=1.7;camYaw=-.35;camPitch=.18;
+ $('sourceType').value='point';
+ $('pos').classList.add('active');$('neg').classList.remove('active');$('gPos').classList.add('active');$('gNeg').classList.remove('active');
+ ['sphereBtn','cylinderBtn','boxBtn'].forEach(id=>$(id).classList.remove('active'));$('sphereBtn').classList.add('active');
+ $('lines').classList.add('active');$('normal').classList.add('active');$('lines').textContent='Ocultar líneas';$('normal').textContent='Ocultar normal';
+ $('op').classList.add('hidden');$('operation').classList.remove('active');$('operation').textContent='Activar modo operación';setMode('flux');
+};
+
+setMode('flux');
+draw();
+</script>
+</body>
+</html>
